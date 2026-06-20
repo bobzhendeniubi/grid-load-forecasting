@@ -22,24 +22,36 @@ def _temp_response(temp: np.ndarray) -> np.ndarray:
 
 
 def _fetch_eia() -> pd.DataFrame:
+    """Fetch hourly demand, paginating past the EIA 5,000-row-per-request cap."""
     import requests
 
-    params = {
-        "api_key": config.EIA_API_KEY,
-        "frequency": "hourly",
-        "data[]": "value",
-        "facets[respondent][]": config.EIA_RESPONDENT,
-        "facets[type][]": "D",
-        "sort[0][column]": "period",
-        "sort[0][direction]": "desc",
-        "length": config.HISTORY_DAYS * 24,
-    }
-    resp = requests.get(config.EIA_BASE_URL, params=params, timeout=60)
-    resp.raise_for_status()
-    rows = resp.json()["response"]["data"]
-    if not rows:
+    page_size = 5000
+    target_rows = config.HISTORY_DAYS * 24
+    collected: list[dict] = []
+    offset = 0
+    while len(collected) < target_rows:
+        params = {
+            "api_key": config.EIA_API_KEY,
+            "frequency": "hourly",
+            "data[]": "value",
+            "facets[respondent][]": config.EIA_RESPONDENT,
+            "facets[type][]": "D",
+            "sort[0][column]": "period",
+            "sort[0][direction]": "desc",
+            "offset": offset,
+            "length": page_size,
+        }
+        resp = requests.get(config.EIA_BASE_URL, params=params, timeout=60)
+        resp.raise_for_status()
+        rows = resp.json()["response"]["data"]
+        if not rows:
+            break
+        collected.extend(rows)
+        offset += page_size
+
+    if not collected:
         raise ValueError("EIA returned no rows; check respondent code / API key.")
-    df = pd.DataFrame(rows).rename(columns={"period": "timestamp", "value": config.TARGET})
+    df = pd.DataFrame(collected).rename(columns={"period": "timestamp", "value": config.TARGET})
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df[config.TARGET] = pd.to_numeric(df[config.TARGET], errors="coerce")
     return df[["timestamp", config.TARGET]].dropna().sort_values("timestamp")

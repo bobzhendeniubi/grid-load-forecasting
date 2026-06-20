@@ -11,17 +11,17 @@ grid-operations data-science team does on weather-driven demand time series.
 
 ## Results
 
-Two years of hourly data, 6-fold rolling-origin backtest (synthetic series; the
-pipeline is identical on real EIA/CAISO data):
+**Real CAISO (CISO) data** — ~2 years of hourly demand (19,808 hours) from the
+EIA API joined to Open-Meteo temperature, 6-fold rolling-origin backtest:
 
 | Model | MAPE | Notes |
 |-------|------|-------|
-| Seasonal-naive (same hour, prior week) | **6.12%** | baseline |
-| Ridge regression | 3.71% | linear ML baseline |
-| **XGBoost (weather-aware)** | **2.07%** | **62% lower error than baseline** |
+| Seasonal-naive (same hour, prior week) | **6.22%** | baseline |
+| Ridge regression | 4.01% | linear ML baseline |
+| **XGBoost (weather-aware)** | **3.23%** (MAE 824 MW) | **~45% lower error than baseline** |
 
-P10–P90 prediction band coverage: **80.4%** (well calibrated). 22 demand
-anomalies flagged.
+P10–P90 prediction band coverage: **81%** (well calibrated). 344 demand
+anomalies flagged over the period.
 
 ![Forecast vs actual](reports/figures/forecast_vs_actual.png)
 ![Backtest MAPE by model](reports/figures/backtest_mape.png)
